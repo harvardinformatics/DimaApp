@@ -1,17 +1,12 @@
 library(shiny)
 
-HOME <- Sys.getenv('HOME')
-PATH <- paste(HOME, 'Dropbox/Harvard', sep='/')
-
-Sweave(paste(PATH, 'MeltonProteomics/ds_functions_21JAN17.Rnw', sep='/'))
-Sweave(paste(PATH, 'MeltonProteomics/ds_resources_21JAN17.Rnw', sep='/'))
-Sweave(paste(PATH, 'MeltonProteomics/ds_analysis_21JAN17.Rnw', sep='/'))
-Sweave(paste(PATH, 'MeltonProteomics/ds_analysis_A_2FEB17.Rnw', sep='/'))
-Sweave(paste(PATH, 'MeltonRNAseq/ds_rnaseqFunctions_13MAR17.Rnw', sep='/'))
-Sweave(paste(PATH, 'MeltonRNAseq/ds_rnaseqResources_22MAR17.Rnw', sep='/'))
-Sweave(paste(PATH, 'MeltonRNAseq/ds_rnaseqAnalysis_5MAR17.Rnw', sep='/'))
-
-
+Sweave('MeltonProteomics/ds_functions_21JAN17.Rnw')
+Sweave('MeltonProteomics/ds_resources_21JAN17.Rnw')
+Sweave('MeltonProteomics/ds_analysis_21JAN17.Rnw')
+Sweave('MeltonProteomics/ds_analysis_A_2FEB17.Rnw')
+Sweave('MeltonRNAseq/ds_rnaseqFunctions_13MAR17.Rnw')
+Sweave('MeltonRNAseq/ds_rnaseqResources_22MAR17.Rnw')
+Sweave('MeltonRNAseq/ds_rnaseqAnalysis_5MAR17.Rnw')
 
 acclst <- list(s227=r227.df$Accession, s238=r238.df$Accession, s239=r239.df$Accession, s243=r243.df$Accession) # rows WITHOUT QUANTITATION REMOVED
 xl <-  makeSubsetExprMatrix(1, adat.lst) # adat.lst in resources:label=msnsetfromsubsets, EACH data.frame HAS ADDITIONAL FEATURES COLUMN (don't confuse with acclst)

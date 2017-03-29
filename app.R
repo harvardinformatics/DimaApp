@@ -8,6 +8,7 @@ Sweave(paste(PATH, 'MeltonProteomics/ds_resources_21JAN17.Rnw', sep='/'))
 Sweave(paste(PATH, 'MeltonProteomics/ds_analysis_21JAN17.Rnw', sep='/'))
 Sweave(paste(PATH, 'MeltonProteomics/ds_analysis_A_2FEB17.Rnw', sep='/'))
 Sweave(paste(PATH, 'MeltonRNAseq/ds_rnaseqFunctions_13MAR17.Rnw', sep='/'))
+Sweave(paste(PATH, 'MeltonRNAseq/ds_rnaseqResources_22MAR17.Rnw', sep='/'))
 Sweave(paste(PATH, 'MeltonRNAseq/ds_rnaseqAnalysis_5MAR17.Rnw', sep='/'))
 
 

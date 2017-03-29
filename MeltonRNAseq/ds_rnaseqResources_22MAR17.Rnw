@@ -1,0 +1,136 @@
+\documentclass[a4paper]{article}
+\usepackage{Sweave}
+\begin{document}
+
+\title{}
+\author{}
+
+\maketitle
+
+<<label=libraries, echo=FALSE, eval=TRUE>>=
+library(edgeR)
+
+quartz.options(width=5, height=5)
+options(editor="/usr/bin/vim")
+options(stringsAsFactors=FALSE)
+
+group <- as.factor(c(rep(c('S1c', 'S2c', 'S3c', 'S4c', 'S5c'), 2),
+                   c('S0c', 'S1c', 'S3c', 'S4c', 'S5c'),
+                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
+                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
+                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
+                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c')))
+
+@ 
+%%%%%% ALL SAMPLES, 1st RUN %%%%%%
+% D030717
+% D032417: added RSEM2nd
+<<lable=loadrnaseq, echo=FALSE, eval=FALSE>>=
+require(stringr)
+supplementAcc <- function(xdge) {
+    gns <- sapply(rownames(xdge), function(x) {
+        a <- unlist(strsplit(x, split='_'))
+        if (length(a) > 2) {
+            a <- unlist(str_split(x, '_', n=2))
+        }
+        return(a)
+    })
+
+    x.df <- as.data.frame(t(as.data.frame(gns, row.names=NULL)))
+    x.df <- data.frame(Ens_sym=rownames(x.df), x.df)
+    rownames(x.df) <- NULL
+    colnames(x.df) <- c('Ens_sym', 'EnsID', 'Symbol')
+    up.acc <- as.character(unlist(mget(x.df$Symbol, ealias2acc, ifnotfound=unlist(mget(x.df$Symbol, eBBsym2acc, ifnotfound=NA)))))
+    x.df <- data.frame(x.df, Acc=up.acc)
+    
+    return(x.df)
+}
+
+samplenames <- c(paste('S227_S', seq(5), 'c', sep=''),
+                 paste('S229_S', seq(5), 'c', sep=''),
+                 paste('S230_S', seq(0, 1), 'c', sep=''), paste('S230_S', seq(3, 5), 'c', sep=''),
+                 paste('S237_S', seq(0, 5), 'c', sep=''),
+                 paste('S238_S', seq(0, 5), 'c', sep=''),
+                 paste('S239_S', seq(0, 5), 'c', sep=''),
+                 paste('S243_S', seq(0, 4), 'c', sep=''))
+
+group <- as.factor(c(rep(c('S1c', 'S2c', 'S3c', 'S4c', 'S5c'), 2),
+                   c('S0c', 'S1c', 'S3c', 'S4c', 'S5c'),
+                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
+                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
+                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
+                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c')))
+
+files1st <- list.files(paste('RSEM1st', sep='/'), pattern='genes.results', full.names=TRUE)
+dat1st.dge <- readDGE(files1st, columns=c(1,5))
+colnames(dat1st.dge) <- samplenames                   
+dat1st.dge$samples$group <- group
+gns.df <- supplementAcc(dat1st.dge)
+dat1st.dge$genes <- gns.df
+
+files2nd <- list.files('RSEM2nd', pattern='1.genes.results', full.names=TRUE)
+dat2nd.dge <- readDGE(files2nd, columns=c(1,5))
+colnames(dat2nd.dge) <- samplenames                   
+dat2nd.dge$samples$group <- group
+gns.df <- supplementAcc(dat2nd.dge)
+dat2nd.dge$genes <- gns.df
+
+save(dat1st.dge, dat2nd.dge, file='dgeraw.rdat')
+
+@
+% added D032417: using stored objects for performance
+<<label=storedobj, echo=FALSE, eval=TRUE>>=
+load('MeltonRNAseq/dgeraw.rdat')
+# reduced RAW DATA SET IS adat.dge, rownames are accessions, 11565 accessions
+dat.dge <- dat1st.dge
+adat.dge <- dat.dge[!is.na(dat.dge$genes$Acc),]
+rownames(adat.dge$counts) <- adat.dge$genes$Acc
+
+# make plots colorful
+require(RColorBrewer)
+cbcol <- group
+levels(cbcol) <- brewer.pal(nlevels(cbcol), 'Set2')
+cbcol <- as.character(cbcol)
+
+@ 
+<<label=densityplots, echo=FALSE, eval=FALSE>>=
+# without cleaning
+pdf(paste(UP1PATH, 'Pres/Plots_dima10MAR17/densityBeforeCleaning.pdf', sep='/'))
+lx.cpm <- cpm(dat.dge, log=TRUE)
+plot(density(lx.cpm[,1]), ylim=c(0, 0.7), main='Count Distribution with Low Counts')
+for (i in 2:ncol(dat.dge)) {
+    den <- density(lx.cpm[,i])
+    lines(den$x, den$y)
+}
+dev.off()
+
+
+# with cleaning
+pdf(paste(UP1PATH, 'Pres/Plots_dima10MAR17/densityAfterCleaning.pdf', sep='/'))
+xxcl.dge <- cleanAndNormalize(dat.dge, clean=TRUE, norm=FALSE) # dim(xxcl.dge) 18013 38
+lxcl.cpm <- cpm(xxcl.dge, log=TRUE)
+plot(density(lxcl.cpm[,1]), ylim=c(0, 0.2), main='Count Distribution without Low Counts')
+for (i in 2:ncol(xxcl.dge)) {
+    den <- density(lxcl.cpm[,i])
+    lines(den$x, den$y)
+}
+dev.off()
+
+@ 
+<<label=normalizeandboxplot, echo=FALSE, eval=FALSE>>=
+nrmcl.dge <- cleanAndNormalize(dat.dge, clean=TRUE, norm=TRUE)
+lcn.cpm <- cpm(nrmcl.dge, log=TRUE)
+
+pdf(paste(UP1PATH, 'Pres/Plots_dima10MAR17/boxplotNormalized.pdf', sep='/'))
+boxplot(lcn.cpm, las=2, col=cbcol, cex.axis=0.5, outcex=0.8, outpch=20, main='Normalized Boxplots')
+dev.off()
+
+@ 
+<<label=mds, echo=FALSE, eval=FALSE>>=
+pdf(paste(UP1PATH, 'Pres/Plots_dima10MAR17/mdsplot.pdf', sep='/'))
+plotMDS(dat.dge, top=Inf, labels=group, col=cbcol,  xlab='dim1', ylab='dim2', cex=0.9, main='Multidimensional Scaling Plot')
+dev.off()
+
+@ 
+
+\end{document}

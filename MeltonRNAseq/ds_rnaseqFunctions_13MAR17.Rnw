@@ -18,6 +18,25 @@ options(stringsAsFactors=FALSE)
 <<label=functions>>=
 require(reshape)
 
+supplementAcc <- function(xdge) {
+    gns <- sapply(rownames(xdge), function(x) {
+        a <- unlist(strsplit(x, split='_'))
+        if (length(a) > 2) {
+            a <- unlist(str_split(x, '_', n=2))
+        }
+        return(a)
+    })
+
+    x.df <- as.data.frame(t(as.data.frame(gns, row.names=NULL)))
+    x.df <- data.frame(Ens_sym=rownames(x.df), x.df)
+    rownames(x.df) <- NULL
+    colnames(x.df) <- c('Ens_sym', 'EnsID', 'Symbol')
+    up.acc <- as.character(unlist(mget(x.df$Symbol, ealias2acc, ifnotfound=unlist(mget(x.df$Symbol, eBBsym2acc, ifnotfound=NA)))))
+    x.df <- data.frame(x.df, Acc=up.acc)
+    
+    return(x.df)
+}
+
 cleanAndNormalize <- function(dge, clean=TRUE, norm=FALSE) {
     # dge: an object of DGEList, e.g., dat.dge
     # clean: boolean; TRUE: keep only with cpm > 1 in more than 10 samples
@@ -47,6 +66,21 @@ cleanAndNormalize <- function(dge, clean=TRUE, norm=FALSE) {
         return(dge)
     }
         
+    return(dge)
+}
+
+cleanGeneCountsMatrix <- function(dge) {
+    # filtering genes with low counts
+    # dge: object of class DGEList
+    nspl <- dim(dge$samples)[1]
+    x.cpm <- cpm(dge)
+    keep <- rowSums(x.cpm > 1) >= nspl # depending on library size >= 5 counts in every sample
+    dge <- dge[keep,, keep.lib.sizes=FALSE]
+    return(dge)
+}
+
+normalizeGeneCountMatrix <- function(dge) {
+    dge <- calcNormFactors(dge, method='TMM')
     return(dge)
 }
 

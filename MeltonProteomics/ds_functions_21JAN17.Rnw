@@ -83,11 +83,12 @@ lattice_barchart <- function(df) {
 }
 
 
-gplot_barplot <- function(df) {
+gplot_barplot <- function(df, title=NULL) {
     ## parameters:
     # df: data.frame sample data
+    # D042417: added parameter (title); modified 2nd line, added ifelse()
     v <- stringr::str_split_fixed(colnames(df), '_', 2) # this line and next moved D21217
-    title <- unique(v[,1])
+    title <- ifelse(is.null(title), unique(v[,1]), title) # modified D042417: added ifelse()
     df <- modTMTsixplexLabelNames(df) # added D21217
     
     xdf <- namerows(df, col.name='Protein')

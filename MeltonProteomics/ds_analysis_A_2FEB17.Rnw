@@ -18,9 +18,6 @@ quartz.options(width=5.5, height=5.5)
 options(editor="/usr/bin/vim")
 options(stringsAsFactors=FALSE)
 
-USEPATH <- '~/Dropbox/Harvard/MeltonProteomics'
-UP1PATH <- '~/Dropbox/Harvard'
-
 plotQQ_channels<- function(set, transformed=TRUE) {
     # set: a MSnSet object, eg,set227
     # transformed: boolean, if TRUE then take the asinh() of abundances
@@ -55,7 +52,7 @@ if (!useAnalysisFile) {
 }
 
 testsym <- NULL
-pplotDE <- function(lmf, tt, contrast, annot, aspdf) {
+pplotDE <- function(lmf, tt, contrast, annot, aspdf=FALSE) {
     # lmf: output from lmFit()
     # tt: output from topTable() with fixed contrast
     # contrast: eg., T5vsT4 for title
@@ -79,11 +76,6 @@ pplotDE <- function(lmf, tt, contrast, annot, aspdf) {
         gplot_parallel(df, df, contrast)
     }
 }
-
-## not necessary when running appxd
-#Sweave('~/Dropbox/Harvard/MeltonProteomics/ds_functions_21JAN17.Rnw')
-#Sweave('~/Dropbox/Harvard/MeltonProteomics/ds_resources_21JAN17.Rnw')
-
 
 @ 
 %%====== ALL SAMPLES DE ANALYSIS ======
@@ -411,6 +403,54 @@ genSubsetAbundMat <- function(isinlst, mssl, logtr) { # function(isinlst, exprls
     return(reslst)
 }
 
+# D042417
+# so that a single abundance matrix can be used, eg, newfit$coef instead of a list of sample matrices
+genSubsetAbundMat_v1<- function(plst, dflst, logtr) { # function(isinlst, exprlst, pd) {}
+    ## adapted from genSubsetAbundMat()
+    # mssl is replaced by dflst, a list of data.frames
+    # plst: a list of protein accessions, name of list element must correspond to name in dflst
+    # dflst: list of data.frame's
+    # logtr: boolean, whether or not log transform abundances; FALSE means no log transformation
+    reslst <- list()
+    for (nm in names(dflst)) {
+        if (!logtr) {
+            dflst[[nm]] <- 10^dflst[[nm]]
+        }
+        
+        if (length(plst[[nm]]) != 0) {
+            if (length(plst[[nm]]) == 1) {
+                x <- dflst[[nm]][rownames(dflst[[nm]]) %in% plst[[nm]],]
+                df <- data.frame(as.list(x))
+                rownames(df) <- isinlst[[nm]]
+            } else  if (length(plst[[nm]]) > 1) { # in case none of the proteins is in any sample (Link-1)
+                df <- as.data.frame(dflst[[nm]][rownames(dflst[[nm]]) %in% plst[[nm]],])
+            }
+            reslst[[nm]] <- df
+        }
+    }
+    return(reslst)
+}
+
+# D042617
+# for use with single abundance matrix, e.g., newfit$coef for plotting ECDF
+genSubsetAbundMat_v2<- function(isinlst, dflst) {
+    # adapted from genSubsetAbundMat_v1()               
+    reslst <- list()
+    for (nm in names(isinlst)) {
+        if (length(isinlst[[nm]]) != 0) {
+            if (length(isinlst[[nm]]) == 1) {
+                x <- dflst[[nm]][rownames(dflst[[nm]]) %in% isinlst[[nm]],]
+                df <- data.frame(as.list(x))
+                rownames(df) <- isinlst[[nm]]
+            } else  if (length(isinlst[[nm]]) > 1) {
+                df <- as.data.frame(dflst[[nm]][rownames(dflst[[nm]]) %in% isinlst[[nm]],])
+            }
+            reslst[[nm]] <- df
+        }
+    }
+    return(reslst)
+}
+
 gmultiParallelPlot_v1 <- function(sl, el) {
     ## diff between multiParallelPlot() and multiParallelPlot_v1: in v1 both parameters are lists
     ## uses eacc2sym, a hash table, generated in ds_resources_21JAN17.Rnw:label=proteinannotD2717
@@ -451,8 +491,9 @@ multiParallelPlot_v2 <- function(sl, el, logtr) {
 }
 
 # Note D031017: looks like the el parameter is not necessary!!
-multiBarPlot <- function(sl, el) {
+multiBarPlot <- function(sl, el, title=NULL) {
     # D031017: sl, a list of data frames, returned from genSubsetAbundMat()
+    # D042417: added parameter(title), modified line 6th line, added ifelse()
     pl <- NULL
     for (nm in names(sl)) { # important to loop over sl, since there may not be data frames from all samples, see Link-1
         sym <- unlist(mget(rownames(sl[[nm]]), eacc2sym, ifnotfound=unlist(mget(rownames(sl[[nm]]), eBBacc2sym, ifnotfound=rownames(sl[[nm]])))))
@@ -461,7 +502,11 @@ multiBarPlot <- function(sl, el) {
 
         xnm <- sub('s', '', nm)
         #pl[[nm]] <- lattice_barchart(sl[[nm]])
-        pl[[nm]] <- gplot_barplot(sl[[nm]])
+        if (is.null(title)) {
+            pl[[nm]] <- gplot_barplot(sl[[nm]])
+        } else {
+            pl[[nm]] <- gplot_barplot(sl[[nm]], title=title)
+        }
     }
     return(pl)
 }

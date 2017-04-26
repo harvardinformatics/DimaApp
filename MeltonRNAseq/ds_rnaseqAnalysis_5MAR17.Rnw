@@ -17,87 +17,60 @@ options(stringsAsFactors=FALSE)
 @ 
 % Using edgeR, limma, and voom
 <<label=linearmodeldesign, echo=FALSE, eval=TRUE>>=
-rnadsgn <- model.matrix(~0 + group)
+rnadsgn <- model.matrix(~0 + grpgd)
 colnames(rnadsgn) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')
 
 contr.matrix <- makeContrasts(S01=S1c - S0c, S12=S2c - S1c, S23=S3c - S2c, S34=S4c - S3c, S45=S5c - S4c,
                               levels=colnames(rnadsgn)) 
 
 @ 
-<<label=voomall, echo=FALSE, eval=TRUE>>=
-v <- voom(dat.dge, rnadsgn, plot=FALSE) # should be raw counts, see documentation of voom D031417
-vfit <- lmFit(v, rnadsgn)
-cvfit <- contrasts.fit(vfit, contrasts=contr.matrix)
-efit <- eBayes(cvfit)
+<<label=voomgd, echo=FALSE, eval=TRUE>>=
+# limma UsersGuide 15.4: '... the voom transformation is applied to the normalized and filtered DGEList object'
+gv <- voom(adat.dge, rnadsgn, plot=FALSE)
+gvfit <- lmFit(gv, rnadsgn)
+cgvfit <- contrasts.fit(gvfit, contrasts=contr.matrix)
+gefit <- eBayes(cgvfit)
 
 @ 
 % D031417: venn in separate code snippet
 <<label=vennplot, echo=FALSE, eval=FALSE>>=
-dt <- decideTests(vfit)
+dt <- decideTests(gefit)
 vennDiagram(dt)
 
-@ 
-% NOTICE: this needs amending, use voom with raw counts!!
-<<label=voomprotms, echo=FALSE, eval=FALSE>>=
-# only for genes whose proteins are in mss
-ismsprot <- nrmcl.dge$genes$Acc %in% rownames(exprs(mss))
-#restricting the DGEList object to genes for proteins in mss
-xms.dge <- nrmcl.dge[ismsprot,, keep.lib.sizes=FALSE]
-
-pv <- voom(xms.dge, rnadsgn, plot=FALSE)
-
-pvfit <- lmFit(pv, rnadsgn)
-cpvfit <- contrasts.fit(pvfit, contrasts=contr.matrix)
-pefit <- eBayes(cpvfit)
-
-pdt <- decideTests(pefit)
-
-pdf(paste(UP1PATH, 'Pres/Plots_dima10MAR17/vennGenesInMS.pdf', sep='/'))
-vennDiagram(dt, main='Venn Diagram for Genes Transl into MS Prots')
-dev.off()
-
-@ 
-<<label=heatmapall, echo=FALSE, eval=FALSE>>=
-Sweave(paste(USEPROTPATH, 'ds_analysis_A_2FEB17.Rnw', sep='/')) # useLevelplot_v2() and exprs()
-restrDge <- function(dgeobj, restrto) {
-    ##restrict DGEList object to genes with proteins in mss    
-    ismsprot <- dgeobj$genes$Acc %in% restrto
-    return(dgeobj[ismsprot,, keep.lib.sizes=FALSE])
-}
-
-# only use MS proteins
-vfit <- vfit[vfit$genes$Acc %in% rownames(exprs(mss)),]
-vf.m <- vfit$coef
-vf.df <- as.data.frame(vf.m)
-
-svf.df <- scale(vf.df)
-tsvf.df <- t(svf.df)
-
-row.hc <- hclust(stats::dist(tsvf.df))
-col.hc <- hclust(stats::dist(svf.df))
-
-dd.col <- as.dendrogram(col.hc)
-#pdf(paste(UP1PATH, 'Pres/Plots_dima10MAR17/heatmapGenesInMS.pdf', sep='/'))
-useLevelplot_v2(tsvf.df, dd.col)
-#dev.off()
 
 @ 
 % D031217
 <<label=DEanalwithDEseq2, echo=FALSE, eval=FALSE>>=
+# TO DO
+
 @ 
+
 % D031017
 <<label=barplot, echo=FALSE, eval=FALSE>>=
+require(MSnbase)
+require(reshape)
+require(ggplot2)
+require(gridExtra)
+#rdf.lst <- genSubsetAbundMat_RNAseq(dimaprots, dat.dge, TRUE)
 
-proteins <- c('D2IYK3', 'J7H3Y9', 'Q9H6I2', 'P52945', 'P78426', 'P01308', 'P01275')
-rdf.lst <- genSubsetAbundMat_RNAseq(dimaprots, dat.dge, TRUE)
+#proteins <- c('D2IYK3', 'J7H3Y9', 'Q9H6I2', 'O43174', 'Q08426')
+#proteins <- c('O14529', 'P09668', 'P36871', 'P52945', 'P78426', 'P01308', 'P01275') # CUX2, CTSH, PGM1
+#proteins <- c('O14529', 'P09668', 'P36871', 'Q5EE01', 'Q5VYX0', 'Q12840', 'P07911', 'P80370', 'P51684') # CUX2, CTSH, PGM1, CENPW, c10orf59, KIF5A, Uromodulin, DLK1
+#proteins <- c('Q5EE01', 'Q5VYX0', 'Q12840', 'P07911', 'P80370', 'P51684', 'P08908')
 
+proteins <- c('A8K9T3', 'P61764', 'Q59FR8', 'A0A024RB36')
+
+rdf.lst <- genSubsetAbundMat_RNAseq(proteins, dat.dge, TRUE)
+
+# from MeltonProteomics/ds_analysis_A_2FEB17.Rnw::label=multiplotsprotlistsD2717
+acclst <- list(s227=r227.df$Accession, s238=r238.df$Accession, s239=r239.df$Accession, s243=r243.df$Accession)
+xl <-  makeSubsetExprMatrix(1, adat.lst) # adat.lst in resources:label=msnsetfromsubsets
+msl <- makeMSnSetfromSampleSubsets(xl, p.df) # p.df in resources:label=MSnSetcombined
+z <- presentNSamples(proteins, acclst) # see MeltonProteomics:ds_analysis_A_2FEB17.Rnw
+df.lst <- genSubsetAbundMat(z, msl, TRUE)
 
 p <- multiBarPlot_RNAseq(df.lst, rdf.lst)
 do.call(grid.arrange, c(p[4:5], ncol=1))
-
-
-
-
 
 @ 
 

@@ -57,19 +57,13 @@ ui <- fluidPage(
         mainPanel(
             tabsetPanel(id='thetabs', selected=1, type='tabs',
                         tabPanel('Barplot', value=1, plotOutput('barplot', height='800px')),
-                        ## D042017
-                        tabPanel('Barplot Expected', value=1, plotOutput('barplotexpected', width='600px', height='300px')),
-                        ## D042517 commented out tabPanel(...fluidRow()...), to use tabPanel(...plotOutput()...)
                         ##tabPanel('Heatmap', value=2, plotOutput('heatmap', height='800px'), verbatimTextOutput('msg')),
-                        tabPanel('Heatmap', value=2, plotOutput('heatmap'), verbatimTextOutput('msg')),
-                        ##tabPanel('Heatmap', value=2, fluidRow(column(3, offset=1, verbatimTextOutput('msg'))), plotOutput('heatmap')),
+                        tabPanel('Heatmap', value=2, fluidRow(column(3, offset=1, verbatimTextOutput('msg'))), plotOutput('heatmap')),
                         tabPanel('Cumulative Distribution', value=3, fluidRow(
                                                                          column(8, plotOutput('ecd1', width='800px', height='600px')),
                                                                          column(12, plotOutput('ecd2', width='800px', height='600px')),
                                                                          column(8, plotOutput('ecd3', width='800px', height='600px')),
                                                                          column(12, plotOutput('ecd4', width='800px', height='600px')))),
-                        # D042517
-                        tabPanel('ECDF Expected', value=3, fluidRow(column(8, plotOutput('ecdfexpected', width='800px', height='600px')))),
                         tabPanel('Parallel Plot', value=4, plotOutput('parallelplot', width='600px', height='800px')),
                         tabPanel('DE Proteins', value=5, fluidRow(
                                                              column(8, tableOutput('contrasttable')),
@@ -95,6 +89,8 @@ ui <- fluidPage(
         )
     )
 )
+
+
 
 ## Server
 server <- function(input, output) {
@@ -163,37 +159,12 @@ server <- function(input, output) {
         }
     })
 
-    output$barplotexpected <- renderPlot({
-        output$info <- renderText({'Enter one or more UniProt Accessions'})
-
-        if (length(prot.id()) != 0) {
-            output$info <- renderText({symb()})
-            
-            z <- list(newfit=prot.id())
-            nf.m <- newfit$coef
-            nf.df <- as.data.frame(nf.m)
-            colnames(nf.df) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')
-            dat.lst <- list(newfit=nf.df)
-            df.lst <- genSubsetAbundMat_v1(z, dat.lst, input$log)
-
-            p <- multiBarPlot(df.lst, msl)
-            if (is.null(p)) {
-                 htmlOutput({'Proteins not found!'}) # TO CORRECT: this probably doesn't do anything
-            } else {
-                 do.call(grid.arrange, p)
-                
-            }
-        }
-    })
-    
     output$heatmap <- renderPlot({
         if (length(prot.id()) >= 2 ) { # cannot cluster with just one protein, no distance!!
             output$info <- renderText({symb()})
 
-            # D042517: replaced exprs(mss) with newfit$coef, changed colnames
-            m <- newfit$coef
+            m <- exprs(mss)
             m <- m[rownames(m) %in% prot.id(),]
-            colnames(m) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')
 
             if (dim(m)[1] == 0) {
                 output$msg <- renderText({'Protein not found!'})
@@ -231,25 +202,6 @@ server <- function(input, output) {
         pcdf()[['s243']]
     })
 
-    ## D042517
-    pcdfexpected <- reactive({
-        if (length(prot.id()) != 0) {
-            output$info <- renderText({symb()})
-        
-            z <- list(newfit=prot.id())
-            nf.m <- newfit$coef
-            nf.df <- as.data.frame(nf.m)
-            colnames(nf.df) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')
-            dat.lst <- list(newfit=nf.df)
-
-            df.lst <- genSubsetAbundMat_v2(z, dat.lst)
-            pcdf <- multiEcdfPlot_v1(df.lst, dat.lst)
-        }
-    })
-    
-    output$ecdfexpected <- renderPlot({
-         pcdfexpected()[['newfit']]
-    })
 
     output$contrasttable <- renderTable({
         if (!input$showheatmap) {
@@ -343,9 +295,7 @@ server <- function(input, output) {
     })
 
     clobjlst.R <- reactive({
-        # D042017 modified: vfit to gvfit
-        ##vfit <- vfit[vfit$genes$Acc %in% rownames(exprs(mss)),]
-        vfit <- gvfit[gvfit$genes$Acc %in% rownames(exprs(mss)),]
+        vfit <- vfit[vfit$genes$Acc %in% rownames(exprs(mss)),]
         rownames(vfit$coef) <- vfit$genes$Acc
         vf.m <- vfit$coef
         vf.df <- as.data.frame(vf.m)

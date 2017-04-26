@@ -233,7 +233,10 @@ plotHousekeeping(hk.df, mss.df)
 @ 
 <<label=ecdfplotshousekeepingmarkedD21317, echo=FALSE, eval=TRUE>>=
 ## version zero, plotECDF(), moved to ds_functions_21JAN17.Rnw
-plotECDF_v1<- function(hdf, df, spl) {
+## D042617
+# added 'title' argument with default value, does'n need code changes downstream
+# modified main
+plotECDF_v1<- function(hdf, df, spl, title='Sample') {
     ld <- stack(df)
 
     pdf(NULL)
@@ -254,13 +257,14 @@ plotECDF_v1<- function(hdf, df, spl) {
             protcoordl[[prot]] <- c(as.numeric(hkvals[prot]), 0, as.numeric(hkvals[prot]), f(as.numeric(hkvals[prot])))
         }
         
-        main <- unlist(strsplit(ch, split='_'))[2]
+        main <- unlist(strsplit(ch, split='_'))
+        if (length(main) > 1) main <- main[2]
         plot(f, main=main, xlab='Protein Expression (Abundance)', ylab='Cumulative Expression', col.main='orange') # turquoise
         for (nm in names(protcoordl)) {
             lines(list(x=c(protcoordl[[nm]][1], protcoordl[[nm]][3]), y=c(protcoordl[[nm]][2], protcoordl[[nm]][4])), col='blue')
             jcoords <- jitter(protcoordl[[nm]][3:4], factor=1, amount=0.08)
             text(x=jcoords[1], y=jcoords[2], labels=nm, col='blue', cex=0.7, adj=c(0,0))
-            title(paste('Sample', spl), outer=TRUE, col.main='lightgreen', cex.main=1.5)
+            title(paste(title, spl), outer=TRUE, col.main='lightgreen', cex.main=1.5)
         }
     }
     par(par.orig)
@@ -286,7 +290,28 @@ multiEcdfPlot <- function(sl, ml) {
     }
     return(pl)
 }
-    
+
+# D042617 for ECDF Expected tab in App_andrnaseq
+multiEcdfPlot_v1 <- function(sl, ml) {
+    ## a wrapper for plotECDF()
+    # see multiBarPlot() for sl and ml
+    # sl is the list of expression data frames for the list of proteins
+    # ml is a list of data.frame's
+    pl <- NULL
+    for (nm in names(sl)) {
+        sym <- unlist(mget(rownames(sl[[nm]]), eacc2sym, ifnotfound=unlist(mget(rownames(sl[[nm]]), eBBacc2sym, ifnotfound=rownames(sl[[nm]])))))
+        #sym <- replReplacmnt(sym)         
+        rownames(sl[[nm]]) <- sym
+
+        xnm <- ''
+        df <- ml[[nm]]
+        pl[[nm]] <- plotECDF_v1(sl[[nm]], df, xnm, title='')
+    }
+    return(pl)
+}
+
+
+
 @ 
 pdf(NULL)
 dev.control(displaylist="enable")

@@ -15,7 +15,7 @@ quartz.options(width=5, height=5)
 options(editor="/usr/bin/vim")
 options(stringsAsFactors=FALSE)
 
-
+OSX <- FALSE
 #Sweave('ds_functions_21JAN17.Rnw', sep='/') # D031517: not necessary when running app
 
 # REMOVE ROWS without quantitation
@@ -75,7 +75,7 @@ notprocessedsplelist <- list(S227=x227.df, S238=x238.df, S239=x239.df, S243=x243
 @ 
 % added D032417: get raw files from object
 <<label=loadrawobj, echo=FALSE, eval=TRUE>>=
-load('MeltonProteomics/xraw.rdat')
+if (OSX) load('xraw.rdat') else load('MeltonProteomics/xraw.rdat')
 notprocessedsplelist <- list(S227=x227.df, S238=x238.df, S239=x239.df, S243=x243.df)
 @ 
 %% ====== ANNOTATION HASH ======
@@ -136,7 +136,11 @@ apply(gs, 1, function(x) eacc[[x[2]]] <- x[1])
 # annotation files generated with python script Python/getProtAnnotUniprotv1.py
 # output of getProtAnnotUniprotv1.py in idAnnotWithUniProt
 require(geneSynonym)
-gs <- read.table('MeltonProteomics/idAnnotWithUniProt20FEB17', header=TRUE, sep='\t', quote='', fill=TRUE)
+if (OSX) {
+    gs <- read.table('idAnnotWithUniProt20FEB17', header=TRUE, sep='\t', quote='', fill=TRUE)
+} else {
+    gs <- read.table('MeltonProteomics/idAnnotWithUniProt20FEB17', header=TRUE, sep='\t', quote='', fill=TRUE)
+}
 colnames(gs) <- NULL
 
 hasnosym <- apply(gs, 1, function(x) ifelse(x[2] == '', TRUE, FALSE)) # 1832 without symbol
@@ -170,8 +174,13 @@ if (FALSE) {
     save(upals.df, file='upals.rdat')
 }
 
-load('MeltonProteomics/genealias.rdat')
-load('MeltonProteomics/upals.rdat')
+if (OSX) {
+    load('genealias.rdat')
+    load('upals.rdat')
+} else {
+    load('MeltonProteomics/genealias.rdat')
+    load('MeltonProteomics/upals.rdat')
+}
 
 # hashes
 eacc2sym <- new.env(hash=TRUE)
@@ -235,19 +244,31 @@ apply(ubann.df, 1, function(x)  eBBsym2acc[[x[3]]] <- x[1])
 %% ====== PATHWAYS ======
 <<label=pathways, echo=FALSE, evall=TRUE>>=
 # FGF signaling
-fgf7.df <- read.table('MeltonProteomics/Pathways/string_fgf7.tsv', header=FALSE, quote='', sep='\t')
+if (OSX) {
+    fgf7.df <- read.table('Pathways/string_fgf7.tsv', header=FALSE, quote='', sep='\t')
+} else {
+    fgf7.df <- read.table('MeltonProteomics/Pathways/string_fgf7.tsv', header=FALSE, quote='', sep='\t')
+}
 sfgf7 <- unique(as.character(unlist(fgf7.df[,1:2]))) # symbol
 afgf7 <- as.character(unlist(mget(sfgf7, ealias2acc, ifnotfound=unlist(mget(sfgf7, eBBsym2acc, ifnotfound=sfgf7)))))
 afgf7 <- unique(afgf7[!is.na(afgf7)])
 
 # Wnt signaling
-gsk3beta.df <- read.table('MeltonProteomics/Pathways/string_gsk3b.tsv', header=FALSE, quote='', sep='\t')
+if (OSX) {
+    gsk3beta.df <- read.table('Pathways/string_gsk3b.tsv', header=FALSE, quote='', sep='\t')
+} else {
+    gsk3beta.df <- read.table('MeltonProteomics/Pathways/string_gsk3b.tsv', header=FALSE, quote='', sep='\t')
+}
 sgsk3beta <- unique(as.character(unlist(gsk3beta.df[,1:2]))) # symbol
 agsk3beta <- as.character(unlist(mget(sgsk3beta, ealias2acc, ifnotfound=unlist(mget(sgsk3beta, eBBsym2acc, ifnotfound=sgsk3beta)))))
 agsk3beta <- unique(agsk3beta[!is.na(agsk3beta)])
 
 # retinoic acid signaling
-rar.df <- read.table('MeltonProteomics/Pathways/rar.tsv', header=FALSE, quote='', sep='\t')
+if (OSX) {
+    rar.df <- read.table('Pathways/rar.tsv', header=FALSE, quote='', sep='\t')
+} else {
+    rar.df <- read.table('MeltonProteomics/Pathways/rar.tsv', header=FALSE, quote='', sep='\t')
+}
 srar <- unique(as.character(unlist(rar.df[,1:2]))) # symbol
 # modified D032317: use NA if not found
 #arar <- as.character(unlist(mget(srar, ealias2acc, ifnotfound=unlist(mget(srar, eBBsym2acc, ifnotfound=srar)))))
@@ -255,7 +276,11 @@ arar <- as.character(unlist(mget(srar, ealias2acc, ifnotfound=unlist(mget(srar, 
 arar <- unique(arar[!is.na(arar)])
 
 # TGFB signaling
-tgfbeta.df <- read.table('MeltonProteomics/Pathways/tgfbeta.tsv', header=FALSE, quote='', sep='\t')
+if (OSX) {
+    tgfbeta.df <- read.table('Pathways/tgfbeta.tsv', header=FALSE, quote='', sep='\t')
+} else {
+    tgfbeta.df <- read.table('MeltonProteomics/Pathways/tgfbeta.tsv', header=FALSE, quote='', sep='\t')
+}
 stgfbeta <- unique(as.character(unlist(tgfbeta.df[,1:2]))) # symbol
 atgfbeta <- as.character(unlist(mget(stgfbeta, ealias2acc, ifnotfound=unlist(mget(stgfbeta, eBBsym2acc, ifnotfound=stgfbeta)))))
 atgfbeta <- unique(atgfbeta[!is.na(atgfbeta)])
@@ -265,13 +290,21 @@ sbaronmetal <- c('NEUROD1', 'INSM1', 'ISL1', 'NKX2-2', 'PAX6', 'PDX1', 'ETV1', '
 abaronmetal <- as.character(unlist(mget(sbaronmetal, ealias2acc, ifnotfound=unlist(mget(sbaronmetal, eBBsym2acc, ifnotfound=sbaronmetal)))))
 abaronmetal <- unique(abaronmetal[!is.na(abaronmetal)])
 
-pdx1_gm <- read.table('MeltonProteomics/Pathways/gm_Pdx1.txt', header=TRUE, quote='', sep='\t')
+if (OSX) {
+    pdx1_gm <- read.table('Pathways/gm_Pdx1.txt', header=TRUE, quote='', sep='\t')
+} else {
+    pdx1_gm <- read.table('MeltonProteomics/Pathways/gm_Pdx1.txt', header=TRUE, quote='', sep='\t')
+}
 pdx1_gm <- pdx1_gm$Symbol
 pdx1_gm <- as.character(unlist(mget(pdx1_gm, ealias2acc, ifnotfound=unlist(mget(pdx1_gm, eBBsym2acc, ifnotfound=pdx1_gm)))))
 
 # added D22217
 # Activing/TGFB signaling
-activin_gm <- read.table('MeltonProteomics/Pathways/gm_Activin.txt', header=TRUE, quote='', sep='\t')
+if (OSX) {
+    activin_gm <- read.table('Pathways/gm_Activin.txt', header=TRUE, quote='', sep='\t')
+} else {
+    activin_gm <- read.table('MeltonProteomics/Pathways/gm_Activin.txt', header=TRUE, quote='', sep='\t')
+}
 activin_gm <- activin_gm$Symbol
 activin_gm <- as.character(unlist(mget(activin_gm, ealias2acc, ifnotfound=unlist(mget(activin_gm, eBBsym2acc, ifnotfound=activin_gm)))))
 # A0A0B5HR54 for ACVRL1
@@ -284,16 +317,25 @@ activin_gm <- as.character(unlist(mget(activin_gm, ealias2acc, ifnotfound=unlist
 
 # D22317
 # Shh signaling
-shh.df <- read.table('MeltonProteomics/Pathways/string_shh.tsv', header=FALSE, quote='', sep='\t')
+if (OSX) {
+    shh.df <- read.table('Pathways/string_shh.tsv', header=FALSE, quote='', sep='\t')
+} else {
+    shh.df <- read.table('MeltonProteomics/Pathways/string_shh.tsv', header=FALSE, quote='', sep='\t')
+}
 sshh <- unique(as.character(unlist(shh.df[,1:2]))) # symbol
 ashh <- as.character(unlist(mget(sshh, ealias2acc, ifnotfound=unlist(mget(sshh, eBBsym2acc, ifnotfound=sshh)))))
 ashh <- unique(ashh[!is.na(ashh)])
 
 # D22717
 # BMP signaling
-bmp1.df <- read.table('MeltonProteomics/Pathways/string_bmp_1.tsv', header=FALSE, quote='', sep='\t')
+if (OSX) {
+    bmp1.df <- read.table('Pathways/string_bmp_1.tsv', header=FALSE, quote='', sep='\t')
+    bmp2.df <- read.table('Pathways/string_bmp_2.tsv', header=FALSE, quote='', sep='\t')
+} else {
+    bmp1.df <- read.table('MeltonProteomics/Pathways/string_bmp_1.tsv', header=FALSE, quote='', sep='\t')
+    bmp2.df <- read.table('MeltonProteomics/Pathways/string_bmp_2.tsv', header=FALSE, quote='', sep='\t')
+}
 sbmp1 <- unique(as.character(unlist(bmp1.df[,1:2])))
-bmp2.df <- read.table('MeltonProteomics/Pathways/string_bmp_2.tsv', header=FALSE, quote='', sep='\t')
 sbmp2 <- unique(as.character(unlist(bmp2.df[,1:2])))
 sbmp <- union(sbmp1, sbmp2)
 abmp <- as.character(unlist(mget(sbmp, ealias2acc, ifnotfound=unlist(mget(sbmp, eBBsym2acc, ifnotfound=sbmp)))))
@@ -457,7 +499,8 @@ prepVenn <- function(rm) {
     return(acc)
 }
 
-pdf(paste(UP1PATH, 'Pres/Slides_27JAN17/vennProteinCoverage.pdf', sep='/'))
+#pdf(paste(UP1PATH, 'Pres/Slides_27JAN17/vennProteinCoverage.pdf', sep='/'))
+pdf('../Pres/Slides_DimaPaper/vennProteinCoverage.pdf')
 venn(prepVenn(TRUE))
 dev.off()
 
@@ -666,7 +709,11 @@ dat.df <- dat.df[order(rownames(dat.df)), ]
 dat.m <- as.matrix(dat.df)
 
 # phenodata
-p.df <- read.csv('MeltonProteomics/pData.txt')
+if (OSX) {
+    p.df <- read.csv('pData.txt')
+} else {
+    p.df <- read.csv('MeltonProteomics/pData.txt')
+}
 
 # features, need only one sample
 f.df <- x238.df[x238.df$Accession %in% rownames(dat.df),c(3,21)]
@@ -702,7 +749,11 @@ if (FALSE) {
 @ 
 
 <<label=ExpressionSetcombined, echo=FALSE, eval=TRUE>>=
-pd <- read.table('MeltonProteomics/pData.txt', sep=',')
+if (OSX) {
+    pd <- read.table('pData.txt', sep=',')
+} else {
+    pd <- read.table('MeltonProteomics/pData.txt', sep=',')
+}
 phenoData <- new('AnnotatedDataFrame', data=pd)
 mses <- ExpressionSet(assayData=exprs(mss), phenoData=phenoData)
 
@@ -721,7 +772,11 @@ newdat.df <- newdat.df[order(rownames(newdat.df)), ]
 newdat.m <- as.matrix(newdat.df)
 
 # phenodata (same)
-p.df <- read.csv('MeltonProteomics/pData.txt')
+if (OSX) {
+    p.df <- read.csv('pData.txt')
+} else {
+    p.df <- read.csv('MeltonProteomics/pData.txt')
+}
 
 # features
 newff <- rownames(newdat.df)
@@ -738,7 +793,11 @@ newmss <- log(newmss, base=10)
 newmss <- normalize(newmss, method='quantiles')
 
 # ExpressionSet
-pd <- read.table('MeltonProteomics/pData.txt', sep=',')
+if (OSX) {
+    pd <- read.table('pData.txt', sep=',')
+} else {
+    pd <- read.table('MeltonProteomics/pData.txt', sep=',')
+}
 phenoData <- new('AnnotatedDataFrame', data=pd)
 newmses <- ExpressionSet(assayData=exprs(newmss), phenoData=phenoData)
 

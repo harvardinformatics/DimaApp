@@ -14,37 +14,7 @@ quartz.options(width=5, height=5)
 options(editor="/usr/bin/vim")
 options(stringsAsFactors=FALSE)
 
-group <- as.factor(c(rep(c('S1c', 'S2c', 'S3c', 'S4c', 'S5c'), 2),
-                   c('S0c', 'S1c', 'S3c', 'S4c', 'S5c'),
-                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
-                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
-                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
-                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c')))
-
-@ 
-%%%%%% ALL SAMPLES, 1st RUN %%%%%%
-% D030717
-% D032417: added RSEM2nd
-<<lable=loadrnaseq, echo=FALSE, eval=FALSE>>=
-require(stringr)
-supplementAcc <- function(xdge) {
-    gns <- sapply(rownames(xdge), function(x) {
-        a <- unlist(strsplit(x, split='_'))
-        if (length(a) > 2) {
-            a <- unlist(str_split(x, '_', n=2))
-        }
-        return(a)
-    })
-
-    x.df <- as.data.frame(t(as.data.frame(gns, row.names=NULL)))
-    x.df <- data.frame(Ens_sym=rownames(x.df), x.df)
-    rownames(x.df) <- NULL
-    colnames(x.df) <- c('Ens_sym', 'EnsID', 'Symbol')
-    up.acc <- as.character(unlist(mget(x.df$Symbol, ealias2acc, ifnotfound=unlist(mget(x.df$Symbol, eBBsym2acc, ifnotfound=NA)))))
-    x.df <- data.frame(x.df, Acc=up.acc)
-    
-    return(x.df)
-}
+OSX <- FALSE
 
 samplenames <- c(paste('S227_S', seq(5), 'c', sep=''),
                  paste('S229_S', seq(5), 'c', sep=''),
@@ -54,46 +24,94 @@ samplenames <- c(paste('S227_S', seq(5), 'c', sep=''),
                  paste('S239_S', seq(0, 5), 'c', sep=''),
                  paste('S243_S', seq(0, 4), 'c', sep=''))
 
-group <- as.factor(c(rep(c('S1c', 'S2c', 'S3c', 'S4c', 'S5c'), 2),
-                   c('S0c', 'S1c', 'S3c', 'S4c', 'S5c'),
-                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
-                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
-                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
-                   c('S0c', 'S1c', 'S2c', 'S3c', 'S4c')))
+grpall <- as.factor(c(rep(c('S1c', 'S2c', 'S3c', 'S4c', 'S5c'), 2),
+                        c('S0c', 'S1c', 'S3c', 'S4c', 'S5c'),
+                        c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
+                        c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
+                        c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
+                        c('S0c', 'S1c', 'S2c', 'S3c', 'S4c')))
 
+grpgd <- as.factor(c(c('S1c', 'S2c', 'S3c', 'S4c', 'S5c'), c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'),
+                     c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c'), c('S0c', 'S1c', 'S2c', 'S3c', 'S4c')))
+
+
+
+@ 
+%%%%%% ALL SAMPLES, 1st RUN %%%%%%
+% D030717
+% D032417: added RSEM2nd
+% D041217: combinded RSEM1st and RSEM2nd; technical replicates, useds edgeR::sumTechReps()
+<<lable=loadrnaseq, echo=FALSE, eval=FALSE>>=
+require(stringr)
+
+# 1st technical replicate data
 files1st <- list.files(paste('RSEM1st', sep='/'), pattern='genes.results', full.names=TRUE)
 dat1st.dge <- readDGE(files1st, columns=c(1,5))
 colnames(dat1st.dge) <- samplenames                   
-dat1st.dge$samples$group <- group
+dat1st.dge$samples$group <- grpall
 gns.df <- supplementAcc(dat1st.dge)
 dat1st.dge$genes <- gns.df
 
+# 2nd technical replicate data
 files2nd <- list.files('RSEM2nd', pattern='1.genes.results', full.names=TRUE)
 dat2nd.dge <- readDGE(files2nd, columns=c(1,5))
-colnames(dat2nd.dge) <- samplenames                   
-dat2nd.dge$samples$group <- group
+colnames(dat2nd.dge) <- samplenames
+dat2nd.dge$samples$group <- grpall
 gns.df <- supplementAcc(dat2nd.dge)
 dat2nd.dge$genes <- gns.df
 
-save(dat1st.dge, dat2nd.dge, file='dgeraw.rdat')
+# combining technical replicates
+dat12.dge <- readDGE(c(files1st, files2nd), columns=c(1,5))
+datall.dge <- sumTechReps(dat12.dge, sub('RSEM1st/|RSEM2nd/', '', colnames(x.dge)))
+colnames(datall.dge) <- samplenames
+datall.dge$samples$group <- grpall
+gns.df <- supplementAcc(dat1st.dge)
+datall.dge$genes <- gns.df
 
-@
+# only use 'good' samples: 227, 238, 239, 243
+datgd.dge <- datall.dge[, grep('227|238|239|243', rownames(datall.dge$samples))]
+
+# saving to reduce time for initialization
+save(datgd.dge, datall.dge, file='dgeraw.rdat')
+
+@ 
 % added D032417: using stored objects for performance
 <<label=storedobj, echo=FALSE, eval=TRUE>>=
-load('MeltonRNAseq/dgeraw.rdat')
-# reduced RAW DATA SET IS adat.dge, rownames are accessions, 11565 accessions
-dat.dge <- dat1st.dge
-adat.dge <- dat.dge[!is.na(dat.dge$genes$Acc),]
+if (OSX) load('dgeraw.rdat') else load('MeltonRNAseq/dgeraw.rdat')
+# USE: adat.dge: FILTERED and NORMALIZED data
+# only transcripts with uniprot accessions
+# rownames are accessions
+# 11565 accessions
+dat.dge <- datgd.dge
+# only transcripts with UniProt accessions
+adat.dge <- dat.dge[!is.na(dat.dge$genes$Acc),, keep.lib.sizes=FALSE ]
 rownames(adat.dge$counts) <- adat.dge$genes$Acc
+# filter
+adat.dge <- cleanGeneCountsMatrix(adat.dge)
+# normalize
+adat.dge <- normalizeGeneCountMatrix(adat.dge) # 9768 transcripts
 
 # make plots colorful
 require(RColorBrewer)
-cbcol <- group
+cbcol <- grpall # D042517: replaced 'group' with 'grpall'
 levels(cbcol) <- brewer.pal(nlevels(cbcol), 'Set2')
 cbcol <- as.character(cbcol)
 
 @ 
 <<label=densityplots, echo=FALSE, eval=FALSE>>=
+# with cleaning
+# cleaning means: >= 5 counts per gene (depending on library size)
+# see ds_rnaseqFunctions_13MAR17.Rnw::cleanAndNormalize
+pdf(paste(UP1PATH, 'Pres/Plots_dima10MAR17/densityAfterCleaning.pdf', sep='/'))
+xxcl.dge <- cleanAndNormalize(dat.dge, clean=TRUE, norm=FALSE) # dim(xxcl.dge) 18013 38
+lxcl.cpm <- cpm(xxcl.dge, log=TRUE)
+plot(density(lxcl.cpm[,1]), ylim=c(0, 0.2), main='Count Distribution without Low Counts')
+for (i in 2:ncol(xxcl.dge)) {
+    den <- density(lxcl.cpm[,i])
+    lines(den$x, den$y)
+}
+dev.off()
+
 # without cleaning
 pdf(paste(UP1PATH, 'Pres/Plots_dima10MAR17/densityBeforeCleaning.pdf', sep='/'))
 lx.cpm <- cpm(dat.dge, log=TRUE)
@@ -105,18 +123,8 @@ for (i in 2:ncol(dat.dge)) {
 dev.off()
 
 
-# with cleaning
-pdf(paste(UP1PATH, 'Pres/Plots_dima10MAR17/densityAfterCleaning.pdf', sep='/'))
-xxcl.dge <- cleanAndNormalize(dat.dge, clean=TRUE, norm=FALSE) # dim(xxcl.dge) 18013 38
-lxcl.cpm <- cpm(xxcl.dge, log=TRUE)
-plot(density(lxcl.cpm[,1]), ylim=c(0, 0.2), main='Count Distribution without Low Counts')
-for (i in 2:ncol(xxcl.dge)) {
-    den <- density(lxcl.cpm[,i])
-    lines(den$x, den$y)
-}
-dev.off()
-
 @ 
+% D041017: nrmcl.dge AND lcn.cpm user FOR FURTHER ANALYSIS
 <<label=normalizeandboxplot, echo=FALSE, eval=FALSE>>=
 nrmcl.dge <- cleanAndNormalize(dat.dge, clean=TRUE, norm=TRUE)
 lcn.cpm <- cpm(nrmcl.dge, log=TRUE)

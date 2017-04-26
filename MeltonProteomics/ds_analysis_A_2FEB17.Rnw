@@ -421,7 +421,7 @@ genSubsetAbundMat_v1<- function(plst, dflst, logtr) { # function(isinlst, exprls
             if (length(plst[[nm]]) == 1) {
                 x <- dflst[[nm]][rownames(dflst[[nm]]) %in% plst[[nm]],]
                 df <- data.frame(as.list(x))
-                rownames(df) <- isinlst[[nm]]
+                rownames(df) <- plst[[nm]]
             } else  if (length(plst[[nm]]) > 1) { # in case none of the proteins is in any sample (Link-1)
                 df <- as.data.frame(dflst[[nm]][rownames(dflst[[nm]]) %in% plst[[nm]],])
             }

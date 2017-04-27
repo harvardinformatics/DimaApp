@@ -79,6 +79,8 @@ ui <- fluidPage(
                                                           column(12, plotOutput('pwymap2', width='400px', height='400px')),
                                                           column(8, plotOutput('pwymap3', width='400px', height='400px')),
                                                           column(12, plotOutput('pwymap4', width='400px', height='400px')))),
+                        ##tabPanel('Pathways Expected', value=6, fluidRow(column(8, plotOutput('pwymapexpected',width='400px', height='400px')))),
+                        tabPanel('Pathways Expected', value=6, plotOutput('pwymapexpected')),
                         tabPanel('Cluster Profile', value=7, fluidRow(
                                                                  column(5, plotOutput('allhmapP', height='600px')),
                                                                  column(5, plotOutput('allhmapR', height='600px')),
@@ -328,6 +330,39 @@ server <- function(input, output) {
         if (!is.null(pwydf()[['s243']])) useLevelplot_v1(pwydf()[['s243']])
     })
 
+
+    pwyexpctdf <- reactive({
+        if (input$pathway != '') {
+            x <- get(input$pathway) # input$pathway is a string
+
+            nf.m <- newfit$coef
+            nf.df <- as.data.frame(nf.m)
+            colnames(nf.df) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')
+            dat.lst <- list(newfit=nf.df)            
+
+            dflst <- list()
+            for (nm in names(dat.lst)) {
+                df <- dat.lst[[nm]]
+                df <- df[rownames(df) %in% x,, drop=FALSE]
+                    
+                if (dim(df)[1] > 1) {
+                    sym <- unlist(mget(rownames(df), eacc2sym, ifnotfound=unlist(mget(rownames(df), eBBacc2sym, ifnotfound=rownames(df)))))
+                    sym <- ifelse(is.na(sym), '-', sym)
+                    rownames(df) <- sym
+                    #df <- as.data.frame(m)
+                    dflst[[nm]] <- df
+                } else {
+                    dflst[[nm]] <- NA
+                }
+            }
+            return(dflst)
+        }
+    })
+    
+    output$pwymapexpected <- renderPlot({
+        if (!is.null(pwyexpctdf()[['newfit']])) useLevelplot_v1(pwyexpctdf()[['newfit']])
+    })
+    
     clobjlst.P <- reactive({
         f.m <- fit$coef
         f.df <- as.data.frame(f.m)

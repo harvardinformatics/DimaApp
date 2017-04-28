@@ -85,7 +85,8 @@ ui <- fluidPage(
                                                                  column(5, plotOutput('allhmapP', height='600px')),
                                                                  column(5, plotOutput('allhmapR', height='600px')),
                                                                  column(5, plotOutput('selclustP', height='600px')),
-                                                                 column(5, plotOutput('selclustR', height='600px')))),
+                                                                 column(5, plotOutput('selclustR', height='600px')),
+                                                                 column(12, offset=9, textOutput('stateinfo',)))), # D042817 added for debugging
                         tabPanel('ECDF Selection', value=8, fluidRow(
                                                                 column(8, plotOutput('ecdfspl1', width='600px', height='600px')),#, hover=hoverOpts(id='plothover'))),
                                                                 #column(4, verbatimTextOutput("hoverinfo")),
@@ -364,7 +365,8 @@ server <- function(input, output) {
     })
     
     clobjlst.P <- reactive({
-        f.m <- fit$coef
+        # D042817 replaced fit with newfit
+        f.m <- newfit$coef
         f.df <- as.data.frame(f.m)
         colnames(f.df) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')
 
@@ -412,6 +414,7 @@ server <- function(input, output) {
         df <- clustHeatSubcluster_v1(clobjlst.P()[['fdf']], clobjlst.P()[['chc']], nclust=50, prot=selclustprot.id())
         return(df)
     })
+
     output$selclustP <- renderPlot({
         ##clustHeatSubcluster(f.df, col.hc, nclust=50, prot='B2R6T2')
         ##clustHeatSubcluster(clobjlst.P()[['fdf']], clobjlst.P()[['chc']], nclust=50, prot=selclustprot.id())
@@ -436,6 +439,11 @@ server <- function(input, output) {
         useLevelplot_v1(ydf, scale=TRUE, pdf=FALSE, main='Transcripts')
     })
 
+    # D042817 added stateinfo for debugging
+    output$stateinfo <- renderText({
+        paste('[Dimensions: ',paste(dim(subclustdf()),  collapse=' '), ']', sep='')
+    })
+    
     newfitdf <- reactive({
         df <- as.data.frame(newfit$coef)
         colnames(df) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')

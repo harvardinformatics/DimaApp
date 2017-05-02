@@ -793,7 +793,8 @@ clustHeatSubcluster <- function(df, colclust, nclust=7, protein=NULL, main='', f
 
 # D031417: v1 returns the xdf data.frame, which for proteins can be used as parameter of useLevelplot_v1(), for RNA the rownames will be used
 # to restrict the transcript data.frame
-clustHeatSubcluster_v1 <- function(df, colclust, nclust=7, protein=NULL, main='', filename='levelplot', qual='Protein', scale=TRUE, pdf=FALSE) {
+# D050217: modified
+clustHeatSubcluster_v1 <- function(df, colclust, nclust=53, protein=NULL, main='', filename='levelplot', qual='Protein', scale=TRUE, pdf=FALSE) {
     # purpose: select cluster that contains protein
     # colclust: object returned from hclust(), interested only in protein clusters not sample clusters
     # nclust: total number of clusters
@@ -801,11 +802,24 @@ clustHeatSubcluster_v1 <- function(df, colclust, nclust=7, protein=NULL, main=''
     tosym <- FALSE
     xdf <- df
     y <- stats::cutree(colclust, k=nclust)
-    clust <- as.integer(y[names(y) == protein])
-    prots <- names(y[y==clust])
+    clustnum <- as.integer(y[names(y) == protein])
+    
+    # D050217 lines until prots <- ...
+    clustersize <- dim(df)[1]
+    selclustnum <- NULL
+    for (cn in clustnum) {
+        x <- sum(y == cn) # how many cluster members
+        if (clustersize > x) {
+            clustersize <- x
+            selclustnum <- cn
+        }
+    }
+    
+    prots <- names(y[y==selclustnum])
     sz <- length(prots)
     if (sz >= 70) {
-        for (n in seq(nclust+10, 100, by=10)) {
+        # D050117: changed seq endpoint from 100 to 243
+        for (n in seq(nclust+10, 243, by=10)) {
             y <- stats::cutree(colclust, k=n)
             clust <- as.integer(y[names(y) == protein])
             prots <- names(y[y==clust])

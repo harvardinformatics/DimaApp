@@ -74,7 +74,9 @@ cleanGeneCountsMatrix <- function(dge) {
     # dge: object of class DGEList
     nspl <- dim(dge$samples)[1]
     x.cpm <- cpm(dge)
-    keep <- rowSums(x.cpm > 1) >= nspl # depending on library size >= 5 counts in every sample
+    # D050117: changed keep threshold
+    #keep <- rowSums(x.cpm > 1) >= nspl # depending on library size >= 5 counts in every sample
+    keep <- rowSums(x.cpm > 1) >= 5 # at least in one sample
     dge <- dge[keep,, keep.lib.sizes=FALSE]
     return(dge)
 }

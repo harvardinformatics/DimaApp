@@ -86,7 +86,7 @@ ui <- fluidPage(
                                                                  column(5, plotOutput('allhmapR', height='600px')),
                                                                  column(5, plotOutput('selclustP', height='600px')),
                                                                  column(5, plotOutput('selclustR', height='600px')),
-                                                                 column(12, offset=9, textOutput('stateinfo',)))), # D042817 added for debugging
+                                                                 column(12, offset=7, textOutput('stateinfo',)))), # D042817 added for debugging
                         tabPanel('ECDF Selection', value=8, fluidRow(
                                                                 column(8, plotOutput('ecdfspl1', width='600px', height='600px')),#, hover=hoverOpts(id='plothover'))),
                                                                 #column(4, verbatimTextOutput("hoverinfo")),
@@ -380,10 +380,13 @@ server <- function(input, output) {
     })
 
     clobjlst.R <- reactive({
-        # D042017 modified: vfit to gvfit
-        ##vfit <- vfit[vfit$genes$Acc %in% rownames(exprs(mss)),]
-        vfit <- gvfit[gvfit$genes$Acc %in% rownames(exprs(mss)),]
-        rownames(vfit$coef) <- vfit$genes$Acc
+        ## D042017 modified: vfit to gvfit
+        ## D050117 replaced expr(mss) with newfit$coef
+        ##vfit <- gvfit[gvfit$genes$Acc %in% rownames(exprs(mss)),]
+        ## D050117 use all the genes from gvfit
+        ##vfit <- gvfit[gvfit$genes$Acc %in% rownames(newfit$coef),]
+        vfit <- gvfit
+        #rownames(vfit$coef) <- vfit$genes$Acc
         vf.m <- vfit$coef
         vf.df <- as.data.frame(vf.m)
         #colnames(vf.df) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')
@@ -411,7 +414,13 @@ server <- function(input, output) {
     })
 
     subclustdf <- reactive({
-        df <- clustHeatSubcluster_v1(clobjlst.P()[['fdf']], clobjlst.P()[['chc']], nclust=50, prot=selclustprot.id())
+        df <- clustHeatSubcluster_v1(clobjlst.P()[['fdf']], clobjlst.P()[['chc']], nclust=53, prot=selclustprot.id())
+        return(df)
+    })
+
+    ## D050117 cluster protein and mRNA separately, anchored with selclustprot.id()
+    subclustRdf <- reactive({
+        df <- clustHeatSubcluster_v1(clobjlst.R()[['fdf']], clobjlst.R()[['chc']], nclust=53, prot=selclustprot.id())
         return(df)
     })
 
@@ -421,27 +430,42 @@ server <- function(input, output) {
         xdf <- subclustdf()
         sym <- unlist(mget(rownames(xdf), eacc2sym, ifnotfound=unlist(mget(rownames(xdf), eBBacc2sym, ifnotfound=rownames(xdf)))))
         sym <- sapply(sym, function(x) unlist(strsplit(x, split=';'))[1])
-        rownames(xdf) <- sym
-        useLevelplot_v1(xdf, scale=TRUE, pdf=FALSE, main='Proteins')
+        
+        if (any(duplicated(sym))) {
+            xm <- as.matrix(xdf)
+            rownames(xm) <- sym
+            xdf <- aggregate(xm, list(rownames(xm)), mean)
+            rownames(xdf) <- xdf$Group.1
+            xdf <-  xdf[,-1]
+        } else {
+            rownames(xdf) <- sym
+        }
+        
+        if (nrow(xdf) != 0) useLevelplot_v1(xdf, scale=TRUE, pdf=FALSE, main='Proteins')
     })
 
     output$selclustR <- renderPlot({
         ##clustHeatSubcluster(f.df, col.hc, nclust=50, prot='B2R6T2')
         ##clustHeatSubcluster(clobjlst.R()[['fdf']], clobjlst.R()[['chc']], nclust=50, prot=selclustprot.id())
-        xdf <- subclustdf()
-        ydf <- clobjlst.R()[['fdf']]
-        ydf <- ydf[rownames(ydf) %in% rownames(xdf),]
+        ## D050117
+        ## subclustdf() replaced by subclustRdf()
+        ## removed lines
+        ydf <- subclustRdf()
+        if (! is.null(ydf)) {
+            if (nrow(ydf) != 0) {
+                sym <- unlist(mget(rownames(ydf), eacc2sym, ifnotfound=unlist(mget(rownames(ydf), eBBacc2sym, ifnotfound=rownames(ydf)))))
+                sym <- sapply(sym, function(x) unlist(strsplit(x, split=';'))[1])
+                rownames(ydf) <- sym
 
-        sym <- unlist(mget(rownames(ydf), eacc2sym, ifnotfound=unlist(mget(rownames(ydf), eBBacc2sym, ifnotfound=rownames(ydf)))))
-        sym <- sapply(sym, function(x) unlist(strsplit(x, split=';'))[1])
-        rownames(ydf) <- sym
-
-        useLevelplot_v1(ydf, scale=TRUE, pdf=FALSE, main='Transcripts')
+                useLevelplot_v1(ydf, scale=TRUE, pdf=FALSE, main='Transcripts')
+            }
+        }
     })
 
     # D042817 added stateinfo for debugging
     output$stateinfo <- renderText({
-        paste('[Dimensions: ',paste(dim(subclustdf()),  collapse=' '), ']', sep='')
+        paste(selclustprot.id(), ' [Dimensions R: ', paste(dim(subclustRdf()), collapse=' '), ']',
+              '[Dimensions P: ', paste(dim(subclustdf()), collapse=' '), ']', sep='')
     })
     
     newfitdf <- reactive({
@@ -491,4 +515,3 @@ server <- function(input, output) {
 }
 
 shinyApp(ui=ui, server=server)
-    

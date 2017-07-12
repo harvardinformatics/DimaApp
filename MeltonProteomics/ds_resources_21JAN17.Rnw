@@ -28,11 +28,12 @@ rmNoQuant <- function(df) {
     df[!xl,]
 }
 
+# D071117 modified sequence of calculations:
+# impute/normalize/log -> normalize/log/impute
 imputeNormalizeTransform <- function(set, method='MLE') {
     # set: a MSnSet object
     # method: 
-    iset <- impute(set, method)
-    nset <- normalize(iset, 'quantiles')
+    nset <- normalize(set, 'quantiles')
     
     #nmres.max <- normalise(ires, "max")
     #nsres.sum <- normalise(ires, "sum")
@@ -40,7 +41,8 @@ imputeNormalizeTransform <- function(set, method='MLE') {
     #nvres.vsn <- normalise(ires, "vsn")
 
     exprs(nset) <- log10(exprs(nset))
-    return(nset)
+    iset <- impute(nset, method)
+    return(iset)
 }
 
 .plot <- function(x,ttl=NULL) {
@@ -53,11 +55,38 @@ imputeNormalizeTransform <- function(set, method='MLE') {
   grid()
 }
 
+# D071117
+bnsRmNoQuant <- function(df) {
+    # removes all rows from data.set without quantitation
+    # df: sample data.frame, eg, x227.df
+    ix <- grep('Abundances\\.\\.Grouped', colnames(df))
+    xdf <- df[,ix]
+    xl <- apply(xdf, 1, function(x) all(is.na(x)))
+    df[!xl,]
+}
+
+# D071117
+procDat <- function(df, spl) {
+    # df: raw data.frame with read.table()
+    rdf <- bnsRmNoQuant(df)
+    ix <- grep('Abundances\\.\\.Grouped|Accession$', colnames(rdf))
+    ddf <- rdf[, ix]
+
+    # remove from Accessions: 'uc', 'PromTArtxx'
+    ddf <- ddf[!ddf$Accession == 'uc', ]
+    ddf <- ddf[!grepl('PromTArt', ddf$Accession), ]
+    rownames(ddf) <- ddf$Accession
+    ddf <- ddf[, -1]
+    colnames(ddf) <- paste(paste('S', spl, sep=''), paste('S', seq(0,5), 'c', sep=''), sep='_')
+    
+    return(ddf)
+}
+
 @ 
 <<label=load, echo=FALSE, eval=FALSE>>=
 ## error opening 160621LDSSAM01867_227-2T6plx-FTK1-60_NOT_Normalized_PD22.xlsx with ooffice to convert to text file
 ## used pandas python module, see Res/pythonHOWTOs
-x227.df <- read.csv('../MeltonProteomics/RawData/160621LDSSAM01867_227-2T6plx-FTK1-60_NOT_Normalized_PD22.csv')
+x227.df <- read.csv('../MeltonProteomics/RawData/160621LDSSAM01867_227-2T6plx-FTK1-60_NOT_Normalized_PD22.csv') # 10427
 x238.df <- read.table('../MeltonProteomics/RawData/160816LDSSAM01867_238BT6plx-FTK1-60_NewDB.csv', header=TRUE, quote='', sep='\t', fill=TRUE, comment.char='')
 x239.df <- read.table('../MeltonProteomics/RawData/160908LDSSAM01867_239T6plx-FTK1-60_UniprotHuman.csv', header=TRUE, quote='', sep='\t', fill=TRUE, comment.char='')
 x243.df <- read.table('../MeltonProteomics/RawData/160922LDSSAM01867_243T6plx-FTK1-60_UniprotHuman2.csv', header=TRUE, quote='', sep='\t', fill=TRUE, comment.char='')
@@ -73,10 +102,38 @@ if(FALSE) {
 notprocessedsplelist <- list(S227=x227.df, S238=x238.df, S239=x239.df, S243=x243.df)
 
 @ 
+
+% D071117
+<<label=loadbognewsearch, echo=FALSE, eval=FALSE>>=
+npath <- '../MeltonProteomics/RawData/NewSearches_May2017'
+
+# files (bnsfilexxx)
+bnsfile227 <- '160621LDSSAM01867_227-2T6plx-FTK1-60_TrmblandRNAseqDB_UniqueandRazorpep2.txt'
+bnsfile238 <- '160816LDSSAM01867_238BT6plx-FTK1-60_UnprotTrembl.txt'
+bnsfile239 <- '160908LDSSAM01867_239T6plx-FTK1-60_UnoprotTrembl.txt'
+bnsfile243 <- '160922LDSSAM01867_243T6plx-FTK1-60_UniprotTrembl.txt'
+
+# read into data.frame (pbnsxxx.df)
+xbns227.df <- read.csv(paste(npath, bnsfile227, sep='/'), header=TRUE, quote='', sep='\t', fill=TRUE, comment.char='') # 10099
+xbns238.df <- read.table(paste(npath, bnsfile238, sep='/'), header=TRUE, quote='', sep='\t', fill=TRUE, comment.char='') # 9839
+xbns239.df <- read.table(paste(npath, bnsfile239, sep='/'), header=TRUE, quote='', sep='\t', fill=TRUE, comment.char='') # 9519
+xbns243.df <- read.table(paste(npath, bnsfile243, sep='/'), header=TRUE, quote='', sep='\t', fill=TRUE, comment.char='') # 9528
+save(xbns227.df, xbns238.df, xbns239.df, xbns243.df, file='../MeltonProteomics/bnsraw.rdat')
+
+bnsnotprocessedsplelist <- list(S227=xbns227.df, S238=xbns238.df, S239=xbns239.df, S243=xbns243.df)
+
+@ 
 % added D032417: get raw files from object
 <<label=loadrawobj, echo=FALSE, eval=TRUE>>=
 if (OSX) load('xraw.rdat') else load('MeltonProteomics/xraw.rdat')
 notprocessedsplelist <- list(S227=x227.df, S238=x238.df, S239=x239.df, S243=x243.df)
+
+@ 
+% D071117
+<<label=loadbognewsearchrawobj, echo=FALSE, eval=TRUE>>=
+if (OSX) load('bnsraw.rdat') else load('MeltonProteomics/bnsraw.rdat')
+bnsnotprocessedsplelist <- list(S227=xbns227.df, S238=xbns238.df, S239=xbns239.df, S243=xbns243.df)
+
 @ 
 %% ====== ANNOTATION HASH ======
 %% ++++++ OLD TEMPORARY HASHES ++++++
@@ -341,18 +398,22 @@ sbmp <- union(sbmp1, sbmp2)
 abmp <- as.character(unlist(mget(sbmp, ealias2acc, ifnotfound=unlist(mget(sbmp, eBBsym2acc, ifnotfound=sbmp)))))
 # P18075 A4D1W7 O15198 Q6I9T1 C8C060 Q0VDC6
 
-
-
 @ 
 %% modified column names on D21217:
 %% MS channels 126, 127, 128, 129, 130, 131 renamed to
 %% S0c, S1c, S2c, S3c, S4c, S5c
 %% NOTICE: phenodata(p227.csv etc) need also to be changed!
+% D071117 cleanAnnot()
 <<label=datamatricesnotnormalized, echo=FALSE, eval=TRUE>>=
+cleanAnnot <- function(df) {
+    df <- df[!grepl('PromTArt|uc', df$Accession), ]
+}
+
 # remove rows without quantification
 # should log10 transform, not done, yet
-r227.df <- rmNoQuant(x227.df)
+r227.df <- rmNoQuant(x227.df) # 9858
 dat227.df <- r227.df[,c(4, 60, 61, 64, 65, 68, 69)]
+dat227.df <- cleanAnnot(dat227.df)
 rownames(dat227.df) <- dat227.df$Accession
 dat227.df <- dat227.df[, -1]
 #colnames(dat227.df) <- paste('S227', seq(126, 131), sep='_')
@@ -360,26 +421,27 @@ colnames(dat227.df) <- paste('S227', paste('S', seq(0,5), 'c', sep=''), sep='_')
 
 r238.df <- rmNoQuant(x238.df)
 dat238.df <- r238.df[,c(3, 32:37)]
+dat238.df <- cleanAnnot(dat238.df)
 rownames(dat238.df) <- dat238.df$Accession
-dat238.df <- dat238.df[, -1]
+dat238.df <- dat238.df[, -1] # 9055
 #colnames(dat238.df) <- paste('S238', seq(126, 131), sep='_')
 colnames(dat238.df) <- paste('S238', paste('S', seq(0,5), 'c', sep=''), sep='_')
 
 r239.df <- rmNoQuant(x239.df)
 dat239.df <- r239.df[,c(3, 32:37)]
+dat239.df <- cleanAnnot(dat239.df)
 rownames(dat239.df) <- dat239.df$Accession
-dat239.df <- dat239.df[, -1]
+dat239.df <- dat239.df[, -1] # 8732
 #colnames(dat239.df) <- paste('S239', seq(126, 131), sep='_')
 colnames(dat239.df) <- paste('S239', paste('S', seq(0,5), 'c', sep=''), sep='_')
 
 r243.df <- rmNoQuant(x243.df)
 dat243.df <- r243.df[,c(3, 34:39)]
-# remove Accession 'uc', don't know what this is.
-dat243.df <- dat243.df[!dat243.df$Accession == 'uc',]
+dat243.df <- cleanAnnot(dat243.df)
 rownames(dat243.df) <- dat243.df$Accession
 dat243.df <- dat243.df[, -grep('Accession', colnames(dat243.df), ignore.case=TRUE)]
 #colnames(dat243.df) <- paste('S243', seq(126, 131), sep='_')
-colnames(dat243.df) <- paste('S243', paste('S', seq(0,5), 'c', sep=''), sep='_')
+colnames(dat243.df) <- paste('S243', paste('S', seq(0,5), 'c', sep=''), sep='_') # 9895
 
 idx227 <- c(60, 61, 64, 65, 68, 69)
 idx238 <- c(32, 33, 34, 35, 36, 37)
@@ -390,6 +452,47 @@ idxlst <- list(idx227, idx238, idx239, idx243)
 splelist <- list(S227=dat227.df, S238=dat238.df, S239=dat239.df, S243=dat243.df) # MUST be a LIST!
 
 @ 
+
+% D071117 
+% adding data from Bogdan new search see ds_resources_2ndSearch_7JUL17.Rnw
+<<label=bognewsearchdatamatricesnotnormalized, echo=FALSE, eval=TRUE>>=
+bnsdat227.df <- procDat(xbns227.df, '227') # 9586
+bnsdat238.df <- procDat(xbns238.df, '238') # 9023
+bnsdat239.df <- procDat(xbns239.df, '239') # 8720
+bnsdat243.df <- procDat(xbns243.df, '243') # 8915
+
+bnsplelist <- list(S227=bnsdat227.df, S238=bnsdat238.df, S239=bnsdat239.df, S243=bnsdat243.df)
+
+@ 
+
+% D071117
+% new combining original data with Bogdan's new search data
+% data.frame with combined data keeps original name so downstream analysis code needn't be modified
+<<label=combinewithbognewsearch, echo=FALSE, eval=TRUE>>=
+rbindWithoutDuplicates <- function(df1, df2) {
+    duprows <- rownames(df1) %in% rownames(df2)
+    df <- rbind(df2, df1[!duprows,, drop=FALSE])
+    
+    return(df)
+}
+
+bind227.df <- rbindWithoutDuplicates(dat227.df, bnsdat227.df) # 10121
+bind238.df <- rbindWithoutDuplicates(dat238.df, bnsdat238.df) # 9152
+bind239.df <- rbindWithoutDuplicates(dat239.df, bnsdat239.df) # 8846
+bind243.df <- rbindWithoutDuplicates(dat243.df, bnsdat243.df) # 10199
+
+###### D071217
+# either TRUE or FALSE if original data and bogdan new search data should be combined or not combined, respectively
+docombine <- FALSE
+if (docombine) {
+    dat227.df <- bind227.df
+    dat238.df <- bind238.df
+    dat239.df <- bind239.df
+    dat243.df <- bind243.df
+}
+
+@ 
+
 %% ====== BEGIN - QUANTILE NORMALIZATION WITH REFERENCE - NOT DONE YET======
 %% added D21717 continued D2211
 %% abundances of 227 are orders of magnitudes higher than from other samples
@@ -677,16 +780,18 @@ ndat239.df <- as.data.frame(exprs(set239))
 ndat243.df <- as.data.frame(exprs(set243))
 
 @ 
+
 %%====== MSnSet OBJECT ALL SAMPLES ======
 %%====== INTERSECTION OF ALL SAMPLES ======
+% D071117 modified how to prepare f.df
 <<label=MSnSetcombined, echo=FALSE, eval=TRUE>>=
 require(reshape)
 # datxxx.df has empty rows (no quantitation) removed
 # datxxx.df must be the same as in label=datamatricesnotnormalized!!!
-adat227.df <- namerows(dat227.df, col.name='features') # 9858
-adat238.df <- namerows(dat238.df, col.name='features') # 9055
-adat239.df <- namerows(dat239.df, col.name='features') # 8732
-adat243.df <- namerows(dat243.df, col.name='features') # 9895
+adat227.df <- namerows(dat227.df, col.name='features') # 10122
+adat238.df <- namerows(dat238.df, col.name='features') # 9154
+adat239.df <- namerows(dat239.df, col.name='features') # 8848
+adat243.df <- namerows(dat243.df, col.name='features') # 10201
 # total proteins: 37540
 # total unique proteins: 12203
 # total common in all samples: 6785
@@ -704,7 +809,7 @@ dat.df <- merge(adat227.df, adat238.df)
 dat.df <- merge(dat.df, adat239.df)
 dat.df <- merge(dat.df, adat243.df)
 rownames(dat.df) <- dat.df$features
-dat.df <- dat.df[,-1]
+dat.df <- dat.df[,-1] # D071117 total common in all samples including Bogdan new search 6963
 dat.df <- dat.df[order(rownames(dat.df)), ]
 dat.m <- as.matrix(dat.df)
 
@@ -715,8 +820,10 @@ if (OSX) {
     p.df <- read.csv('MeltonProteomics/pData.txt')
 }
 
-# features, need only one sample
-f.df <- x238.df[x238.df$Accession %in% rownames(dat.df),c(3,21)]
+# features
+# D071117 modified using annotation hashes
+sym <- unlist(mget(rownames(dat.df), eacc2sym, ifnotfound=unlist(mget(rownames(dat.df), eBBacc2sym, ifnotfound=rownames(dat.df)))))
+f.df <- data.frame(Accession=rownames(dat.df), Symbol=sym)
 f.df <- f.df[order(f.df$Accession),]
 rownames(f.df) <-  f.df$Accession
 f.df <- f.df[, -1, drop=FALSE]
@@ -748,6 +855,46 @@ if (FALSE) {
 
 @ 
 
+% D071217
+% make MSnSet object separately for Bogdan new search data
+<<label=msnsetbogdannewsearch, echo=FALSE, eval=TRUE>>=
+abnsdat227.df <- namerows(bnsdat227.df, col.name='features') # 9586
+abnsdat238.df <- namerows(bnsdat238.df, col.name='features') # 9023
+abnsdat239.df <- namerows(bnsdat239.df, col.name='features') # 8720
+abnsdat243.df <- namerows(bnsdat243.df, col.name='features') # 8915
+
+## abundance matrix
+bnsdat.df <- merge(abnsdat227.df, abnsdat238.df)
+bnsdat.df <- merge(bnsdat.df, abnsdat239.df)
+bnsdat.df <- merge(bnsdat.df, abnsdat243.df)
+rownames(bnsdat.df) <- bnsdat.df$features
+bnsdat.df <- bnsdat.df[,-1]
+bnsdat.df <- bnsdat.df[order(rownames(bnsdat.df)), ]
+bnsdat.m <- as.matrix(bnsdat.df)
+
+# phenodata, copied from ds_resources_21JAN17.Rnw
+if (OSX) {
+    p.df <- read.csv('pData.txt')
+} else {
+    p.df <- read.csv('MeltonProteomics/pData.txt')
+}
+
+# features
+bnsf.df <- xbns227.df[xbns227.df$Accession %in% rownames(bnsdat.df),c(5,26)]
+bnsf.df <- bnsf.df[order(bnsf.df$Accession),]
+rownames(bnsf.df) <-  bnsf.df$Accession
+bnsf.df <- bnsf.df[, -1, drop=FALSE]
+
+# make MSnSet object
+bnsmss <- MSnSet(bnsdat.m, bnsf.df, p.df) # 6441
+
+# contains 8+6+3+196 proteins with missing values!
+bnsmss <- filterNA(bnsmss, pNA=0.7) 
+bnsmss <- log(bnsmss, base=10) 
+bnsmss <- normalize(bnsmss, method='quantiles')
+
+@ 
+
 <<label=ExpressionSetcombined, echo=FALSE, eval=TRUE>>=
 if (OSX) {
     pd <- read.table('pData.txt', sep=',')
@@ -756,6 +903,20 @@ if (OSX) {
 }
 phenoData <- new('AnnotatedDataFrame', data=pd)
 mses <- ExpressionSet(assayData=exprs(mss), phenoData=phenoData)
+
+@ 
+
+% D071217
+% make ExpressionSet separately for Bogdan new search
+<<label=expressionsetbogdannewsearch, echo=FALSE, eval=TRUE>>=
+if (OSX) {
+    pd <- read.table('pData.txt', sep=',')
+} else {
+    pd <- read.table('MeltonProteomics/pData.txt', sep=',')
+}
+
+phenoData <- new('AnnotatedDataFrame', data=pd)
+bnsmses <- ExpressionSet(assayData=exprs(bnsmss), phenoData=phenoData)
 
 @ 
 %%====== UNION OF ALL SAMPLES ======
@@ -861,7 +1022,7 @@ makeSubsetExprMatrix <- function(ncomb, alist) {
     }
 }
 
-makeSubsetPheno <-  function(pdat, lst) {
+makeSubsetPheno <- function(pdat, lst) {
     ## generates pheno data data frame for all sample combinations in a list given as parameter
     ## returns a list
     # pdat: phenodata for all samples: p.df from label=MSnSetcombined
@@ -877,7 +1038,10 @@ makeSubsetPheno <-  function(pdat, lst) {
     pl <- lapply(lst, makePheno, pdat)
 }
 
-makeSubsetFeatures <- function(lst) {
+# D071117
+# does not work any more
+# reaches back to x227 etc to get feature names, additional features from xbns227 etc missed
+makeSubsetFeatures_v0 <- function(lst) {
     ## generates the pheno data df for all combinations of samples
     ## returns a list
     # lst: list of abundance expression data frames, output from makeMSnSetfromSubsets
@@ -888,6 +1052,34 @@ makeSubsetFeatures <- function(lst) {
         f.df <- f.df[order(f.df$Accession),]
         rownames(f.df) <-  f.df$Accession
         f.df <- f.df[, -1, drop=FALSE]
+    })
+}
+
+# D071117
+makeSubsetFeatures <- function(lst) {
+    ## generates the pheno data df for all combinations of samples
+    ## returns a list
+    # lst: list of abundance expression data frames, output from makeMSnSetfromSubsets
+    fl <- lapply(lst, function(df) {
+        spln <- getSampleName(df)
+
+        # original samples
+        x.df <- get(paste('x', spln, '.df', sep=''))
+        xf.df <- x.df[x.df$Accession %in% rownames(df), c('Accession','Gene.Symbol')]
+        rownames(xf.df) <-  xf.df$Accession
+        xf.df <- xf.df[, -1, drop=FALSE]
+        
+        # bogdan new search samples
+        bns.df <- get(paste('xbns', spln, '.df', sep=''))
+        bnsf.acc <- bns.df$Accession
+        bnsf.acc <- bnsf.acc[bnsf.acc %in% rownames(df)]
+        bnsf.sym <- unlist(mget(bnsf.acc, eacc2sym, ifnotfound=unlist(mget(bnsf.acc, eBBacc2sym, ifnotfound=bnsf.acc))))
+        bnsf.df <- data.frame(Accession=bnsf.acc, Gene.Symbol=bnsf.sym)
+        rownames(bnsf.df) <- bnsf.df$Accession
+        bnsf.df <- bnsf.df[, -1, drop=FALSE]
+        
+        f.df <- rbindWithoutDuplicates(xf.df, bnsf.df)
+        f.df <- f.df[order(rownames(f.df)),, drop=FALSE]
     })
 }
 

@@ -254,19 +254,26 @@ server <- function(input, output) {
          pcdfexpected()[['newfit']]
     })
 
+    # D071217 (Thoreau 200)
     output$contrasttable <- renderTable({
         if (!input$showheatmap) {
             if (input$contrast != '') {
-                x <- topTable(fit2, coef=as.integer(input$contrast), number=Inf, p.value=input$threshold)
+                orig <- topTable(fit2, coef=as.integer(input$contrast), number=Inf, p.value=input$threshold)
+                bog <- topTable(bnsfit2, coef=as.integer(input$contrast), number=Inf, p.value=input$threshold)
+                x <- rbindWithoutDuplicates(orig, bog)
                 addAnnotTt(x)
             }
         }
     })
 
+    # D071217
     output$htmap <- renderPlot({
         if (input$showheatmap) {
             if (input$contrast != '') {
-                x <- topTable(fit2, coef=as.integer(input$contrast), number=Inf, p.value=input$threshold)
+                orig <- topTable(fit2, coef=as.integer(input$contrast), number=Inf, p.value=input$threshold)
+                bog <- topTable(bnsfit2, coef=as.integer(input$contrast), number=Inf, p.value=input$threshold)
+                x <- rbindWithoutDuplicates(orig, bog)
+
                 if (length(rownames(x)) >= 2 ) { # cannot cluster with just one protein, no distance!!
                     # modified: next line replaced, after next added, D22117
                     m <- fit$coef
@@ -365,7 +372,9 @@ server <- function(input, output) {
     })
     
     clobjlst.P <- reactive({
-        # D042817 replaced fit with newfit
+        ## D042817 replaced fit with newfit
+        ## D050417 nfit is returned and not f.df, added first line
+        nfit <- newfit
         f.m <- newfit$coef
         f.df <- as.data.frame(f.m)
         colnames(f.df) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')
@@ -376,7 +385,7 @@ server <- function(input, output) {
         row.hc <- hclust(stats::dist(tsf.df))
         col.hc <- hclust(stats::dist(sf.df))
 
-        return(list(fdf=f.df, sf=sf.df, tsf=tsf.df, rhc=row.hc, chc=col.hc))
+        return(list(fdf=nfit, sf=sf.df, tsf=tsf.df, rhc=row.hc, chc=col.hc))
     })
 
     clobjlst.R <- reactive({
@@ -385,6 +394,7 @@ server <- function(input, output) {
         ##vfit <- gvfit[gvfit$genes$Acc %in% rownames(exprs(mss)),]
         ## D050117 use all the genes from gvfit
         ##vfit <- gvfit[gvfit$genes$Acc %in% rownames(newfit$coef),]
+        ## D050417 vfit is returned and not vf.df
         vfit <- gvfit
         #rownames(vfit$coef) <- vfit$genes$Acc
         vf.m <- vfit$coef
@@ -397,7 +407,7 @@ server <- function(input, output) {
         row.hc <- hclust(stats::dist(tsvf.df))
         col.hc <- hclust(stats::dist(svf.df))
         
-        return(list(fdf=vf.df, sf=svf.df, tsf=tsvf.df, rhc=row.hc, chc=col.hc))
+        return(list(fdf=vfit, sf=svf.df, tsf=tsvf.df, rhc=row.hc, chc=col.hc))
     })
 
     
@@ -414,13 +424,15 @@ server <- function(input, output) {
     })
 
     subclustdf <- reactive({
-        df <- clustHeatSubcluster_v1(clobjlst.P()[['fdf']], clobjlst.P()[['chc']], nclust=53, prot=selclustprot.id())
+        #df <- clustHeatSubcluster_v1(clobjlst.P()[['fdf']], clobjlst.P()[['chc']], nclust=53, prot=selclustprot.id())
+        df <- clustHeatSubcluster_v2(clobjlst.P()[['fdf']], nclust=53, prot=selclustprot.id())
         return(df)
     })
 
     ## D050117 cluster protein and mRNA separately, anchored with selclustprot.id()
     subclustRdf <- reactive({
-        df <- clustHeatSubcluster_v1(clobjlst.R()[['fdf']], clobjlst.R()[['chc']], nclust=53, prot=selclustprot.id())
+        #df <- clustHeatSubcluster_v1(clobjlst.R()[['fdf']], clobjlst.R()[['chc']], nclust=53, prot=selclustprot.id())
+        df <- clustHeatSubcluster_v2(clobjlst.R()[['fdf']], nclust=53, prot=selclustprot.id())
         return(df)
     })
 
@@ -475,20 +487,31 @@ server <- function(input, output) {
     })
     
     ## ECDF Selection
+    # D071217 integrate bogdan new search
     output$ecdfspl1 <- renderPlot({
-        plotECDF_v5(newfitdf(), 'S1c', rownames(c1), markers)
+        rn1 <- c(rownames(c1), rownames(bnsC1))
+        rn1 <- unique(rn1)
+        plotECDF_v5(newfitdf(), 'S1c', rn1, markers)
     })
     output$ecdfspl2 <- renderPlot({
-        plotECDF_v5(newfitdf(), 'S2c', rownames(c2), markers)
+        rn2 <- c(rownames(c2), rownames(bnsC2))
+        rn2 <- unique(rn2)
+        plotECDF_v5(newfitdf(), 'S2c', rn2, markers)
     })
     output$ecdfspl3 <- renderPlot({
-        plotECDF_v5(newfitdf(), 'S3c', rownames(c3), markers)
+        rn3 <- c(rownames(c3), rownames(bnsC3))
+        rn3 <- unique(rn3)
+        plotECDF_v5(newfitdf(), 'S3c', rn3, markers)
     })
     output$ecdfspl4 <- renderPlot({
-        plotECDF_v5(newfitdf(), 'S4c', rownames(c4), markers)
+        rn4 <- c(rownames(c4), rownames(bnsC4))
+        rn4 <- unique(rn4)
+        plotECDF_v5(newfitdf(), 'S4c', rn4, markers)
     })
     output$ecdfspl5 <- renderPlot({
-        plotECDF_v5(newfitdf(), 'S5c', rownames(c5), markers)
+        rn5 <- c(rownames(c5), rownames(bnsC5))
+        rn5 <- unique(rn5)
+        plotECDF_v5(newfitdf(), 'S5c', rn5, markers)
     })
     
     # for testing

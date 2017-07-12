@@ -107,6 +107,30 @@ c5map <- unlist(mget(rownames(c5), eacc2sym, ifnotfound=unlist(mget(rownames(c5)
 res <- decideTests(fit2)
 
 @ 
+
+% D071217
+% DE analysis separately for Bogdan new search
+<<label=limmabogdannewsearch, echo=FALSE, eval=TRUE>>=
+design <- model.matrix(~ 0+factor(rep(seq(0, 5), 4)))
+colnames(design) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')
+contrast.matrix <- makeContrasts(S1c - S0c, S2c - S1c, S3c - S2c, S4c - S3c, S5c - S4c, levels=design)
+
+bnsfit <- lmFit(bnsmses, design)
+bnsfit2 <- contrasts.fit(bnsfit, contrast.matrix)
+bnsfit2 <- eBayes(bnsfit2)
+
+@ 
+<<label=toptablesbogdannewfit, echo=FALSE, eval=TRUE>>=
+bnsC1 <- topTable(bnsfit2, coef=1, adjust='BH', number=5)
+bnsC2 <- topTable(bnsfit2, coef=2, adjust='BH', number=15)
+bnsC3 <- topTable(bnsfit2, coef=3, adjust='BH', number=5)
+bnsC4 <- topTable(bnsfit2, coef=4, adjust='BH', number=5) # empty
+bnsC5 <- topTable(bnsfit2, coef=5, adjust='BH', number=15)
+
+bnsres <- decideTests(bnsfit2)
+
+
+@ 
 %%====== UNION OF ALL SAMPLES - unbalanced DE analysis ======
 %% D032117
 <<label=unbalancedlimma, echo=FALSE, eval=TRUE>>=
@@ -847,6 +871,69 @@ clustHeatSubcluster_v1 <- function(df, colclust, nclust=53, protein=NULL, main='
         #useLevelplot_v1(xdf,scale=TRUE, pdf=FALSE)
         return(xdf)
     }
+}
+
+# D050417 replaces v1, iterations, if necessary, are done with subcluster matrix
+clustHeatSubcluster_v2 <- function(fit, nclust=53, protein=NULL) {
+    # purpose: select cluster that contains protein
+    # fit: e.g., gvfit or newfit
+    # nclust: total number of clusters
+    # protein: a protein accession
+    getColclust <- function(df) {
+        #sdf <- scale(f.df)
+        hc <- hclust(stats::dist(df))
+        return(hc)
+    }
+    
+    selClustNum <- function(cnum, cvect, csize) {
+        ## cnum: a number, indication the the cluster proteins belongs to, e.g., clustnum
+        ## cvect: cluster vector, e.g., y
+        ## size: maximum size of clusters, e.g., dim(f.df)[1]
+        clustersize <- csize
+        selclustnum <- NULL
+        for (cn in cnum) {
+            x <- sum(cvect == cn) # how many cluster members
+            if (clustersize > x) {
+                clustersize <- x
+                selclustnum <- cn
+            }
+        }
+        return(selclustnum)
+    }
+    
+    tosym <- FALSE
+    f.m <- fit$coef
+    f.df <- as.data.frame(f.m)
+    colnames(f.df) <- c('S0c', 'S1c', 'S2c', 'S3c', 'S4c', 'S5c')
+    sdf <- scale(f.df)
+    
+    col.hc <- getColclust(sdf)
+    y <- stats::cutree(col.hc, k=nclust)
+    clustnum <- as.integer(y[names(y) == protein]) # prot in more than one cluster
+    
+    if (length(clustnum) > 1) clustnum <- selClustNum(clustnum, y, dim(sdf)[1])
+    prots <- names(y[y == clustnum])
+    sz <- length(prots)
+
+    while (sz > 70) {
+        new.df <- sdf[rownames(sdf) %in% prots, ]
+        col.hc <- getColclust(new.df)
+        y <- stats::cutree(col.hc, k=100)
+        clustnum <- as.integer(y[names(y) == protein])
+        
+        if (length(clustnum) > 1) clustnum <- selClustNum(clustnum, y, dim(sdf)[1])
+        prots <- names(y[y == clustnum])
+        sz <- length(prots)
+    }
+    xdf <- sdf[rownames(sdf) %in% prots,]
+    
+    if (tosym) {
+        sym <- unlist(mget(rownames(xdf), eacc2sym, ifnotfound=unlist(mget(rownames(xdf), eBBacc2sym, ifnotfound=rownames(xdf)))))
+        sym <- sapply(sym, function(x) unlist(strsplit(x, split=';'))[1])
+        rownames(xdf) <- sym
+    }
+    #useLevelplot_v1(xdf,scale=TRUE, pdf=FALSE)
+    return(xdf)
 }
 
 @ 

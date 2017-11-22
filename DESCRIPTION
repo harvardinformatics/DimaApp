@@ -1,0 +1,15 @@
+Package: DimaApp
+Type: Package
+Title: Melton lab proteomics thing
+Version: 1.0.0.0
+Date: 2017-11-22
+Authors@R: person(family = "Straubhaar", given = "Juerg", email =
+        "juerg_straubhaar@harvard.edu", role = c("aut", "cre"))
+Description: This is a Melton lab shiny app
+License: GPL (>=3)
+Depends: R (>= 3.4.0), ggplot2, roxygen2
+Imports: shiny
+URL: https://github.com/harvardinformatics/DimaApp
+RoxygenNote: 5.0.1
+NeedsCompilation: no
+Packaged: 2017-11-22 21:48:32 UTC; jstr

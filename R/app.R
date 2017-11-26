@@ -1,3 +1,6 @@
+require(compiler)
+enableJIT(3)
+
 library(shiny)
 
 Sweave('MeltonProteomics/ds_functions_21JAN17.Rnw')
